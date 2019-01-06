@@ -3,24 +3,27 @@
 
 #include "linalg.hpp"
 #include <vector>
+#include <initializer_list>
 
 class svm
 {
 private:
-	linalg::vector _w;
 	double _b;
-	std::vector<int> _supports;
+	linalg::vector _alpha;
 	double _C;
-	double (*_kernel)(linalg::vector, linalg::vector, double...);
-	std::vector<double> _params;
+	double (*_kernel)(linalg::vector, linalg::vector, std::initializer_list<double>);
+	std::initializer_list<double> _params;
+	linalg::vector _errors;
+	int examine_example(const linalg::matrix&, const linalg::vector&, int);
+	bool take_step(const linalg::matrix&, const linalg::vector&, int, int);
 
 public:
-	svm(double, double(*)(linalg::vector, linalg::vector, double...), double...);
-	void fit(const linalg::matrix&, const linalg::vector&);
+	svm();
+	void fit(const linalg::matrix&, const linalg::vector&, double, double(*kernel)(linalg::vector, linalg::vector, std::initializer_list<double>), std::initializer_list<double>);
 	linalg::vector predict(const linalg::matrix&);
-	linalg::vector _w();
-	double _b();
-	std::vector<int> _supports();
 };
+
+double linear(linalg::vector, linalg::vector, std::initializer_list<double>);
+double polynomial(linalg::vector, linalg::vector, std::initializer_list<double>);
 
 #endif

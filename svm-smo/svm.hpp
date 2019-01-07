@@ -2,28 +2,34 @@
 #define SVM_H
 
 #include "linalg.hpp"
-#include <vector>
 #include <initializer_list>
+
+namespace kernels
+{
+	double linear(const linalg::vector&, const linalg::vector&, std::initializer_list<double>);
+	double polynomial(const linalg::vector&, const linalg::vector&, std::initializer_list<double>);
+	double gaussian(const linalg::vector&, const linalg::vector&, std::initializer_list<double>);
+	double sigmoid(const linalg::vector&, const linalg::vector&, std::initializer_list<double>);
+}
 
 class svm
 {
-private:
-	double _b;
-	linalg::vector _alpha;
-	double _C;
-	double (*_kernel)(linalg::vector, linalg::vector, std::initializer_list<double>);
-	std::initializer_list<double> _params;
-	linalg::vector _errors;
-	int examine_example(const linalg::matrix&, const linalg::vector&, int);
-	bool take_step(const linalg::matrix&, const linalg::vector&, int, int);
-
 public:
+	std::initializer_list<double> _params;
+	linalg::matrix _X;
+	linalg::vector _y;
+	linalg::vector _w;
+	linalg::vector _alpha;
+	linalg::vector _errors;
+	double _b;
+	double _C;
+	double(*_kernel)(const linalg::vector&, const linalg::vector&, std::initializer_list<double>);
+	int examine_example(int);
+	bool take_step(int, int);
+	double objective_function(const linalg::vector&);
 	svm();
-	void fit(const linalg::matrix&, const linalg::vector&, double, double(*kernel)(linalg::vector, linalg::vector, std::initializer_list<double>), std::initializer_list<double>);
+	void train(const linalg::matrix&, const linalg::vector&, double = 1e+300, double(*kernel)(const linalg::vector&, const linalg::vector&, std::initializer_list<double>) = kernels::linear, std::initializer_list<double> = { 0.0 });
 	linalg::vector predict(const linalg::matrix&);
 };
-
-double linear(linalg::vector, linalg::vector, std::initializer_list<double>);
-double polynomial(linalg::vector, linalg::vector, std::initializer_list<double>);
 
 #endif

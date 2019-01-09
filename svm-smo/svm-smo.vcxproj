@@ -103,6 +103,7 @@
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
+    <Lib />
     <Lib>
       <AdditionalDependencies>C:\Users\Andreeff\source\repos\linalg\Debug\linalg.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Lib>
@@ -122,8 +123,9 @@
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
+    <Lib />
     <Lib>
-      <AdditionalDependencies>C:\Users\Andreeff\source\repos\linalg\Debug\linalg.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>C:\Users\Andreeff\source\repos\linalg\x64\Debug\linalg.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Lib>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -145,6 +147,7 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
+    <Lib />
     <Lib>
       <AdditionalDependencies>C:\Users\Andreeff\source\repos\linalg\Debug\linalg.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Lib>
@@ -168,8 +171,9 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
+    <Lib />
     <Lib>
-      <AdditionalDependencies>C:\Users\Andreeff\source\repos\linalg\Debug\linalg.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>C:\Users\Andreeff\source\repos\linalg\x64\Debug\linalg.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Lib>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

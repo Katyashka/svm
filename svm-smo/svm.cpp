@@ -1,4 +1,6 @@
 #include "svm.hpp" 
+#include <vector>
+#include <algorithm>
 
 constexpr auto tol = 1e-6;
 constexpr auto eps = tol;
@@ -28,8 +30,8 @@ bool svm::take_step(int i_1, int i_2)
 	int y_1 = this->_y[i_1];
 	int y_2 = this->_y[i_2];
 	int s = y_1 * y_2;
-	double error_1 = this->objective_function(this->_X[i_1]) - this->_y[i_1];
-	double error_2 = this->objective_function(this->_X[i_2]) - this->_y[i_2];
+	double error_1 = alpha_1 > 0 && alpha_1 <this->_C ? this->_errors[i_1] : this->objective_function(this->_X[i_1]) - this->_y[i_1];
+	double error_2 = alpha_2 > 0 && alpha_2 <this->_C ? this->_errors[i_2] : this->objective_function(this->_X[i_2]) - this->_y[i_2];
 
 	double L = 0.0, H = 0.0;
 
@@ -56,7 +58,7 @@ bool svm::take_step(int i_1, int i_2)
 
 	if (eta < 0)
 	{
-		a_2 = alpha_2 - y_2 * (error_1 - error_2) / eta;
+		a_2 = alpha_2 + y_2 * (error_2 - error_1) / eta;
 
 		if (L > a_2)
 			a_2 = L;
@@ -109,12 +111,14 @@ bool svm::take_step(int i_1, int i_2)
 
 	for (int i = 0; i < this->_errors.length(); ++i)
 		if (i != i_1 && i != i_2)
-			this->_errors[i] += y_1 * (a_1 - alpha_1) * this->_kernel(this->_X[i_1], this->_X[i], this->_params) + y_2 * (a_2 - alpha_2) * this->_kernel(this->_X[i_2], this->_X[i], this->_params);
+			this->_errors[i] += y_1 * (a_1 - alpha_1) * this->_kernel(this->_X[i_1], this->_X[i], this->_params) + y_2 * (a_2 - alpha_2) * this->_kernel(this->_X[i_2], this->_X[i], this->_params) + this->_b - b_new;
 
 	if (a_2 > 0 && a_2 < this->_C)
 		this->_errors[i_2] = 0.0;
 	if (a_1 > 0 && a_1 < this->_C)
 		this->_errors[i_1] = 0.0;
+
+	this->_b = b_new;
 
 	return true;
 }
@@ -206,7 +210,26 @@ void svm::train(const linalg::matrix& X, const linalg::vector& y, double C, doub
 	this->_w = linalg::vector(X.cols());
 
 	for (int i = 0; i < this->_w.length(); ++i)
-		this->_w = this->_w + this->_alpha[i] * this->_y[i] * this->_X[i];
+		if (this->_alpha[i] != 0)
+			this->_w = this->_w + this->_alpha[i] * this->_y[i] * this->_X[i];
+	
+	double non_zeros[2];
+
+	for (int i = 0; i < this->_alpha.length(); ++i)
+		if (this->_alpha[i] != 0 && this->_y[i] < 0)
+		{
+			non_zeros[0] = this->_w * this->_X[i] - this->_y[i];
+			break;
+		}
+
+	for (int i = 0; i < this->_alpha.length(); ++i)
+		if (this->_alpha[i] != 0 && this->_y[i] > 0)
+		{
+			non_zeros[1] = this->_w * this->_X[i] - this->_y[i];
+			break;
+		}
+
+	this->_b = 0.5 * (non_zeros[0] + non_zeros[1]);
 }
 
 linalg::vector svm::predict(const linalg::matrix& X)

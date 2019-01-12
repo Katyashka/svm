@@ -3,6 +3,7 @@
 
 #include "linalg.hpp"
 #include <initializer_list>
+#include <vector>
 
 namespace kernels
 {
@@ -12,9 +13,30 @@ namespace kernels
 	double sigmoid(const linalg::vector&, const linalg::vector&, std::initializer_list<double>);
 }
 
+struct record
+{
+
+	linalg::vector _alpha;
+	record( const linalg::vector& alpha)
+	{
+		this->_alpha = alpha;
+	}
+	record(const record& rec)
+	{
+		this->_alpha = rec._alpha;
+	}
+	record& operator=(const record& rec)
+	{
+		this->_alpha = rec._alpha;
+
+		return *this;
+	}
+};
+
 class svm
 {
 public:
+	std::vector<record> _recs;
 	std::initializer_list<double> _params;
 	linalg::matrix _X;
 	linalg::vector _y;

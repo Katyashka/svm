@@ -30,8 +30,8 @@ bool svm::take_step(int i_1, int i_2)
 	int y_1 = this->_y[i_1];
 	int y_2 = this->_y[i_2];
 	int s = y_1 * y_2;
-	double error_1 = alpha_1 > 0 && alpha_1 <this->_C ? this->_errors[i_1] : this->objective_function(this->_X[i_1]) - this->_y[i_1];
-	double error_2 = alpha_2 > 0 && alpha_2 <this->_C ? this->_errors[i_2] : this->objective_function(this->_X[i_2]) - this->_y[i_2];
+	double E_1 = alpha_1 > 0 && alpha_1 < this->_C ? this->_errors[i_1] : this->objective_function(this->_X[i_1]) - this->_y[i_1];
+	double E_2 = alpha_2 > 0 && alpha_2 < this->_C ? this->_errors[i_2] : this->objective_function(this->_X[i_2]) - this->_y[i_2];
 
 	double L = 0.0, H = 0.0;
 
@@ -58,7 +58,7 @@ bool svm::take_step(int i_1, int i_2)
 
 	if (eta < 0)
 	{
-		a_2 = alpha_2 + y_2 * (error_2 - error_1) / eta;
+		a_2 = alpha_2 + y_2 * (E_2 - E_1) / eta;
 
 		if (L > a_2)
 			a_2 = L;
@@ -68,7 +68,7 @@ bool svm::take_step(int i_1, int i_2)
 	else
 	{
 		double c_1 = eta / 2.0;
-		double c_2 = y_2 * (error_1 - error_2) - eta * alpha_2;
+		double c_2 = y_2 * (E_1 - E_2) - eta * alpha_2;
 		double L_obj = c_1 * L * L + c_2 * L;
 		double H_obj = c_1 * H * H + c_2 * H;
 
@@ -95,8 +95,8 @@ bool svm::take_step(int i_1, int i_2)
 	else if (a_1 > this->_C - eps)
 		a_1 = this->_C;
 
-	double b_1 = error_1 + y_1 * (a_1 - alpha_1) * K_1_1 + y_2 * (a_2 - alpha_2) * K_1_2 + this->_b;
-	double b_2 = error_2 + y_1 * (a_1 - alpha_1) * K_1_2 + y_2 * (a_2 - alpha_2) * K_2_2 + this->_b;
+	double b_1 = E_1 + y_1 * (a_1 - alpha_1) * K_1_1 + y_2 * (a_2 - alpha_2) * K_1_2 + this->_b;
+	double b_2 = E_2 + y_1 * (a_1 - alpha_1) * K_1_2 + y_2 * (a_2 - alpha_2) * K_2_2 + this->_b;
 	double b_new = 0.0;
 
 	if (a_1 > 0 && a_1 < this->_C)
@@ -110,13 +110,11 @@ bool svm::take_step(int i_1, int i_2)
 	this->_alpha[i_2] = a_2;
 
 	for (int i = 0; i < this->_errors.length(); ++i)
-		if (i != i_1 && i != i_2)
+		if (0 < this->_alpha[i] && this->_C > this->_alpha[i])
 			this->_errors[i] += y_1 * (a_1 - alpha_1) * this->_kernel(this->_X[i_1], this->_X[i], this->_params) + y_2 * (a_2 - alpha_2) * this->_kernel(this->_X[i_2], this->_X[i], this->_params) + this->_b - b_new;
-
-	if (a_2 > 0 && a_2 < this->_C)
-		this->_errors[i_2] = 0.0;
-	if (a_1 > 0 && a_1 < this->_C)
-		this->_errors[i_1] = 0.0;
+	
+	this->_errors[i_2] = 0.0;
+	this->_errors[i_1] = 0.0;
 
 	this->_b = b_new;
 
@@ -127,8 +125,8 @@ int svm::examine_example(int i_1)
 {
 	double y_1 = this->_y[i_1];
 	double alpha_1 = this->_alpha[i_1];
-	double error_1 = this->objective_function(this->_X[i_1]) - this->_y[i_1];
-	double r_1 = error_1 * y_1;
+	double E_1 = this->objective_function(this->_X[i_1]) - this->_y[i_1];
+	double r_1 = E_1 * y_1;
 
 	if ((r_1 < -tol && alpha_1 < this->_C) || (r_1 > tol && alpha_1 > 0))
 	{
@@ -139,8 +137,8 @@ int svm::examine_example(int i_1)
 		{
 			if (this->_alpha[k] > 0 && this->_alpha[k] < this->_C)
 			{
-				double error_2 = this->_errors[k];
-				double temp = abs(error_1 - error_2);
+				double E_2 = this->objective_function(this->_X[k]) - this->_y[k];
+				double temp = abs(E_1 - E_2);
 
 				if (temp > tmax)
 				{
@@ -180,6 +178,7 @@ void svm::train(const linalg::matrix& X, const linalg::vector& y, double C, doub
 	this->_kernel = kernel;
 	this->_params = params;
 	this->_alpha = linalg::vector(X.rows());
+	this->_w = linalg::vector(X.cols());
 	this->_b = 0.0;
 	this->_errors = linalg::vector(X.rows());
 
@@ -195,11 +194,54 @@ void svm::train(const linalg::matrix& X, const linalg::vector& y, double C, doub
 
 		if (examine_all)
 			for (int i = 0; i < this->_alpha.length(); ++i)
+			{
+				int prev_non_zeros = 0;
+
+				for (int i = 0; i < this->_alpha.length(); ++i)
+					if (this->_alpha[i] != 0)
+						++prev_non_zeros;
+
 				num_changed += this->examine_example(i);
+
+				int non_zeros = 0;
+
+				for (int i = 0; i < this->_alpha.length(); ++i)
+					if (this->_alpha[i] != 0)
+						++non_zeros;
+
+				if (prev_non_zeros != non_zeros)
+				{
+					record rec(this->_alpha);
+
+					this->_recs.push_back(rec);
+				}
+			}
 		else
 			for (int i = 0; i < this->_alpha.length(); ++i)
 				if (this->_alpha[i] != 0 && this->_alpha[i] != this->_C)
-					num_changed += this->examine_example(i);;
+				{
+					int prev_non_zeros = 0;
+
+					for (int i = 0; i < this->_alpha.length(); ++i)
+						if (this->_alpha[i] != 0)
+							++prev_non_zeros;
+
+					num_changed += this->examine_example(i);
+
+					int non_zeros = 0;
+
+					for (int i = 0; i < this->_alpha.length(); ++i)
+						if (this->_alpha[i] != 0)
+							++non_zeros;
+
+					if (prev_non_zeros != non_zeros)
+					{
+
+						record rec(this->_alpha);
+
+						this->_recs.push_back(rec);
+					}
+				}
 
 		if (examine_all)
 			examine_all = !examine_all;
@@ -207,29 +249,21 @@ void svm::train(const linalg::matrix& X, const linalg::vector& y, double C, doub
 			examine_all = !examine_all;
 	}
 
-	this->_w = linalg::vector(X.cols());
-
 	for (int i = 0; i < this->_w.length(); ++i)
-		if (this->_alpha[i] != 0)
+		if (this->_alpha[i] > 0)
 			this->_w = this->_w + this->_alpha[i] * this->_y[i] * this->_X[i];
-	
-	double non_zeros[2];
+
+	int non_zeros = 0;
 
 	for (int i = 0; i < this->_alpha.length(); ++i)
 		if (this->_alpha[i] != 0 && this->_y[i] < 0)
 		{
-			non_zeros[0] = this->_w * this->_X[i] - this->_y[i];
-			break;
+			this->_b += this->_kernel(this->_w, this->_X[i], this->_params) - this->_y[i];
+			non_zeros++;
 		}
 
-	for (int i = 0; i < this->_alpha.length(); ++i)
-		if (this->_alpha[i] != 0 && this->_y[i] > 0)
-		{
-			non_zeros[1] = this->_w * this->_X[i] - this->_y[i];
-			break;
-		}
+	this->_b /= non_zeros;
 
-	this->_b = 0.5 * (non_zeros[0] + non_zeros[1]);
 }
 
 linalg::vector svm::predict(const linalg::matrix& X)
